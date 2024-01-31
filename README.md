@@ -104,7 +104,7 @@ ldd BRANSON
 # If compilation failed or the executable binary is dynamic, use the instructions below to resolve isssues
 1) make -n
 # The order of libraries is crucial for static linking.
-mpic++ -static BRANSON.o -o BRANSON -lopen-pal -lpmix -lhwloc -ludev -lz -ldl -lltdl -lrt -lc  -lgcc /workspace/AMG2023-self-contained/hypre-2.30.0/src/hypre/lib/libHYPRE.a -luuid -levent -lutil -lnuma -lm -lrt --showme
+2) mpic++ -static BRANSON.o -o BRANSON -lopen-pal -lpmix -lhwloc -ludev -lz -ldl -lltdl -lrt -lc  -lgcc /workspace/AMG2023-self-contained/hypre-2.30.0/src/hypre/lib/libHYPRE.a -luuid -levent -lutil -lnuma -lm -lrt --showme
 # reorganize the order of library
-g++ -static BRANSON.o -o BRANSON -lopen-pal -lpmix -lhwloc -ludev -lz -ldl -lltdl -lrt -lc -lgcc -luuid -levent -lutil -lnuma -lm -lrt -I/workspace/openmpi-5.0.1-install/include -L/workspace/openmpi-5.0.1-install/lib -Wl,-rpath -Wl,/workspace/openmpi-5.0.1-install/lib -Wl,--enable-new-dtags -lmpi -lopen-pal -lpmix -lz -lm -levent_core -levent_pthreads -lhwloc -lz -levent_core -levent_pthreads -lhwloc -ludev -lrt
+3) g++ -static BRANSON.o -o BRANSON -lopen-pal -lpmix -lhwloc -ludev -lz -ldl -lltdl -lrt -lc -lgcc -luuid -levent -lutil -lnuma -lm -lrt -I/workspace/openmpi-5.0.1-install/include -L/workspace/openmpi-5.0.1-install/lib -Wl,-rpath -Wl,/workspace/openmpi-5.0.1-install/lib -Wl,--enable-new-dtags -lmpi -lopen-pal -lpmix -lz -lm -levent_core -levent_pthreads -lhwloc -lz -levent_core -levent_pthreads -lhwloc -ludev -lrt
 ```
