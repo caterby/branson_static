@@ -2,42 +2,59 @@
 This repository contains scripts to set up and execute the static branson.
 
 ## 1. SETUP
-Execute the `setup.sh` script to install the necessary tools:
- ```
-sudo ./setup.sh
- ```
-
-**Note:** MSSQL supports hard drives with a maximum of 4k physical sector size. Ensure your hard drive's physical and logical sector sizes are not larger than 4k using these commands:
- ```
-lsblk -o NAME,LOG-SEC
-lsblk -o NAME,PHY-SEC
- ```
-
-If the sizes are greater than 4k, you can use the following options with setup.sh to create a virtual drive formatted to xfs with 4k physical and logical sector sizes:
+Build the directory for the installation:
 ```
-      -v                    : create a virtual drive
-      -s                    : size of the virtual drive
-      -p                    : path for mounting the virtual drive
-``` 
-**Example:**
-To create a 10GB virtual drive mounted to the nvme1 directory, use:
+mkdir workspace && cd workspace
 ```
-sudo ./setup.sh -v -s 10 -p /nvme1
-```
-For more information about data and query generation, refer to the readme file inside the `dbgen` folder.
-
-## 2. Running the TPC-H Benchmark
-Execute `run-tpch.sh` to generate data, queries, load data into the database, and execute benchmarks.
-
-**NOTE:** Modify MSSQL_DATA_DIR in the script to specify where the MSSQL Database should reside.
- ```    
-      -d                    : generate data - scale d
-      -q                    : generate query - number of queries q
-      -l                    : load the data into database
-      -w                    : warm up the database
-      -p                    : run the Power test
-      -t                    : run the Throughput Test 
+Setup the environment, install the following libraries and the necessary tools:
  ```
+apt-get update
+apt-get install git wget build-essential python3 python3-pip vim libpmix-dev meson gperf libcap-dev pkg-config libmount-dev
+pip3 install jinja2
+ ```
+
+**Note:** Make sure the version of your C/C++ compiler with suppport for C11 and C++14, and the version of CMAKE is 3.9+. To check the support for C11 and C++14, you can use the following command:
+```
+gcc --version
+g++ --version
+```
+ ```
+## 2. Install the static OpenMPI
+```
+cd /workspace
+wget https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.1.tar.gz
+gunzip -c openmpi-5.0.1.tar.gz | tar xf -
+mkdir openmpi-5.0.1-install
+
+# Disable unneeded features to reduce the install time
+cd openmpi-5.0.1/
+./configure --prefix=/workspace/openmpi-5.0.1-install --without-memory-manager --disable-dlopen --enable-static --disable-shared --with-psm2=no --with-psm=no --with-ofi=no --without-verbs --without-rdmacm --without-libnuma
+make -j32 all
+make -j32 install
+
+# Change the environment directory for static OpenMPI
+export MPI_HOME=/workspace/openmpi-5.0.1-install/bin
+export PATH=$MPI_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$MPI_HOME/lib:$LD_LIBRARY_PATH
+```
+
+
+## 3. Install the static MPI
+
+```
+cd /workspace
+wget https://www.mpich.org/static/downloads/4.1.2/mpich-4.1.2.tar.gz
+tar xzvf mpich-4.1.2.tar.gz
+cd mpich-4.1.2
+
+# static mpicc 
+./configure --prefix=/workspace/mpich-4.1.2-install --enable-static
+make && sudo make install 
+export MPI_HOME=/workspace/mpich-install
+export PATH=$MPI_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$MPI_HOME/lib:$LD_LIBRARY_PATH
+```
+
 
  **Example:**
  To generate 100GB of data, a set of queries (22 in total), load the data into the database, warm up the database, and run both the power and throughput tests, use:
