@@ -1,7 +1,7 @@
 # branson_static
 This repository contains scripts to set up and execute the static branson.
 
-## 1. SETUP
+## 1. Setup
 Build the directory for the installation:
 ```
 mkdir workspace && cd workspace
@@ -32,6 +32,9 @@ autoconf --version
 ```
 
 ## 2. Install the static OpenMPI
+-- The MPI is REQUIRED:
+ * MPI, A High Performance Message Passing Library, <http://www.open-mpi.org/>
+   A parallel communication library is required in BRANSON.
 ```
 cd /workspace
 wget https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.1.tar.gz
@@ -49,64 +52,59 @@ export MPI_HOME=/workspace/openmpi-5.0.1-install/bin
 export PATH=$MPI_HOME/bin:$PATH
 export LD_LIBRARY_PATH=$MPI_HOME/lib:$LD_LIBRARY_PATH
 ```
-
-
-## 3. Install the static MPI
-
+## 3. Install other static libs
+In our machine, we installed libudev as an example, if other libs also needed in your machine, please follow the same way to install them.
 ```
+cd /workspace/
+git clone https://github.com/systemd/systemd-stable.git
+cd systemd-stable
+./configure --auto-features=disabled --default-library=static -D standalone-binaries=true -D static-libsystemd=true -D static-libudev=true -D link-udev-shared=false -D link-systemctl-shared=false -D link-networkd-shared=false -D link-timesyncd-shared=false
+make
+find ./ -name "libudev*"
+cp ./build/libudev.a /usr/local/lib/
+```
+
+## 4. Install other dependencies (Optional)
+```
+-- The following packages are OPTIONAL:
+
+ * caliper, CALIPER, <https://software.llnl.gov/Caliper/>
+   Code instrumentation for performance analysis
+ * METIS, METIS, <http://glaros.dtc.umn.edu/gkhome/metis/metis/overview>
+   METIS is a set of serial programs for partitioning graphs,
+   partitioning finite element meshes, and producing fill reducing orderings for
+   sparse matrices.
+ * HDF5, HDF5 is a data model, library, and file format for storing
+   and managing data. It supports an unlimited variety of datatypes, and is
+   designed for flexible and efficient I/O and for high volume and complex
+   data., <https://support.hdfgroup.org/HDF5/>
+   Provides optional visualization support for Branson.
+```
+**NOTE:** By default, we didn't compile these dependencies into static. To skip these dependencies, just set the related cmake options when building Branson.
+
+## 5. Install branson
+```
+# download branson
+sudo apt update
+sudo apt install cmake
 cd /workspace
-wget https://www.mpich.org/static/downloads/4.1.2/mpich-4.1.2.tar.gz
-tar xzvf mpich-4.1.2.tar.gz
-cd mpich-4.1.2
+git clone https://github.com/lanl/branson.git
+cd /workspace/branson/src/
+# disable optional dependenies (Metis, HDF5, etc)
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/workspace/branson/src -DCMAKE_PREFIX_PATH=/workspace/openmpi-5.0.1-install/bin/ -DUSE_OPENMP=ON 
+make -j
 
-# static mpicc 
-./configure --prefix=/workspace/mpich-4.1.2-install --enable-static
-make && sudo make install 
-export MPI_HOME=/workspace/mpich-install
-export PATH=$MPI_HOME/bin:$PATH
-export LD_LIBRARY_PATH=$MPI_HOME/lib:$LD_LIBRARY_PATH
+# After the compiliation, check if the BRANSON is static.
+cd /workspace/branson/
+ldd BRANSON
+# If it shows `not a dynamic executable`, it is static.
+# Run BRANSON, usage: BRANSON <path_to_input_file>
+./BRANSON 
+
+# If compilation failed or the executable binary is dynamic, use the instructions below to resolve isssues
+1) make -n
+# The order of libraries is crucial for static linking.
+mpic++ -static BRANSON.o -o BRANSON -lopen-pal -lpmix -lhwloc -ludev -lz -ldl -lltdl -lrt -lc  -lgcc /workspace/AMG2023-self-contained/hypre-2.30.0/src/hypre/lib/libHYPRE.a -luuid -levent -lutil -lnuma -lm -lrt --showme
+# reorganize the order of library
+g++ -static BRANSON.o -o BRANSON -lopen-pal -lpmix -lhwloc -ludev -lz -ldl -lltdl -lrt -lc -lgcc -luuid -levent -lutil -lnuma -lm -lrt -I/workspace/openmpi-5.0.1-install/include -L/workspace/openmpi-5.0.1-install/lib -Wl,-rpath -Wl,/workspace/openmpi-5.0.1-install/lib -Wl,--enable-new-dtags -lmpi -lopen-pal -lpmix -lz -lm -levent_core -levent_pthreads -lhwloc -lz -levent_core -levent_pthreads -lhwloc -ludev -lrt
 ```
-
-
- **Example:**
- To generate 100GB of data, a set of queries (22 in total), load the data into the database, warm up the database, and run both the power and throughput tests, use:
- ```
- sudo ./run-tpch.sh -d 100 -q 1 -l -w -p -t
- ```
- **NOTE:** The resulting database, post data loading, will be approximately 3 times larger than the generated data. Ensure adequate storage space is available.
-
- Executing run-tpch.sh will automatically start the Prometheus SQL Exporter, which exposes metrics from DBMSs for Prometheus monitoring on port 9399. Remember to add this exporter to your Prometheus configuration and adjust the hostname to match your setup:
-
- **NOTE:** By default, Docker is configured to use the standard gateway for the Docker bridge network, associated with the IP address 172.17.0.1. Should there be any alterations to this setup, the sql_exporter configuration file will require modifications.
- ```
-  # sql exporter metrics exporter scrape
-  - job_name: “sql-exporter-server"
-
-    # metrics_path defaults to '/metrics'
-    # scheme defaults to 'http'.
-
-    static_configs:
-      - targets: ["machine-name.domain.com:9399"]
-        labels:
-          group: "cxl"
- ```
- For more information about this exporter, check the following link:
- [Prometheus SQL Exporter](https://github.com/free/sql_exporter)
-
- Additionally, the script provides an option to initiate the cAdvisor exporter, granting insights into container resource utilization and performance. This daemon aggregates and exports data about active containers on port 8082. Add this exporter to your Prometheus configuration and adjust the hostname to match your setup:
- 
- ```
-  # cAdvisor metrics exporter scrape
-  - job_name: “cadvisor-server"
-
-    # metrics_path defaults to '/metrics'
-    # scheme defaults to 'http'.
-
-    static_configs:
-      - targets: ["machine-name.domain.com:8082"]
-        labels:
-          group: "cxl"
- ```
- For more information about this exporter, check the following link:
- [cAdvisor (Container Advisor)](https://github.com/google/cadvisor)
- 
