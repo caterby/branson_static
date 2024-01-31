@@ -18,7 +18,7 @@ pip3 install jinja2
 gcc --version
 g++ --version
 ```
- ```
+
 ## 2. Install the static OpenMPI
 ```
 cd /workspace
