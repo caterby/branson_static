@@ -18,6 +18,18 @@ pip3 install jinja2
 gcc --version
 g++ --version
 ```
+Install autoconf tool for the compilation (autoconf ≥ 2.71):
+```
+autoconf --version
+wget https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.xz
+tar -xf autoconf-2.71.tar.xz
+cd autoconf-2.71/
+./configure
+time make 
+sudo make install 
+. ~/.profile
+autoconf --version    
+```
 
 ## 2. Install the static OpenMPI
 ```
